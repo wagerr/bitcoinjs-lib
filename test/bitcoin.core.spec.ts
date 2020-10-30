@@ -50,7 +50,7 @@ describe('Bitcoin-core', () => {
 
       const network: any = params.isTestnet
         ? bitcoin.networks.testnet
-        : bitcoin.networks.bitcoin;
+        : bitcoin.networks.wagerr;
       const version = network[typeMap[params.addrType]];
 
       it('can export ' + expected, () => {
@@ -65,8 +65,8 @@ describe('Bitcoin-core', () => {
   // base58KeysInvalid
   describe('address.fromBase58Check', () => {
     const allowedNetworks = [
-      bitcoin.networks.bitcoin.pubKeyHash,
-      bitcoin.networks.bitcoin.scriptHash,
+      bitcoin.networks.wagerr.pubKeyHash,
+      bitcoin.networks.wagerr.scriptHash,
       bitcoin.networks.testnet.pubKeyHash,
       bitcoin.networks.testnet.scriptHash,
     ];
@@ -99,7 +99,7 @@ describe('Bitcoin-core', () => {
 
       const network = params.isTestnet
         ? bitcoin.networks.testnet
-        : bitcoin.networks.bitcoin;
+        : bitcoin.networks.wagerr;
       const keyPair = bitcoin.ECPair.fromWIF(strng, network);
 
       it('fromWIF imports ' + strng, () => {
@@ -116,7 +116,7 @@ describe('Bitcoin-core', () => {
   // base58KeysInvalid
   describe('ECPair.fromWIF', () => {
     const allowedNetworks = [
-      bitcoin.networks.bitcoin,
+      bitcoin.networks.wagerr,
       bitcoin.networks.testnet,
     ];
 

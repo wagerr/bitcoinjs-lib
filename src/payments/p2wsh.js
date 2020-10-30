@@ -66,7 +66,7 @@ function p2wsh(a, opts) {
   });
   let network = a.network;
   if (!network) {
-    network = (a.redeem && a.redeem.network) || networks_1.bitcoin;
+    network = (a.redeem && a.redeem.network) || networks_1.wagerr;
   }
   const o = { network };
   lazy.prop(o, 'address', () => {
@@ -118,8 +118,7 @@ function p2wsh(a, opts) {
   });
   lazy.prop(o, 'name', () => {
     const nameParts = ['p2wsh'];
-    if (o.redeem !== undefined && o.redeem.name !== undefined)
-      nameParts.push(o.redeem.name);
+    if (o.redeem !== undefined) nameParts.push(o.redeem.name);
     return nameParts.join('-');
   });
   // extended validation

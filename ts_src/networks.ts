@@ -14,20 +14,20 @@ interface Bip32 {
   private: number;
 }
 
-export const bitcoin: Network = {
-  messagePrefix: '\x18Bitcoin Signed Message:\n',
-  bech32: 'bc',
+export const wagerr: Network = {
+  messagePrefix: '\x18Wagerr Signed Message:\n',
+  bech32: 'bc', // not available
   bip32: {
-    public: 0x0488b21e,
-    private: 0x0488ade4,
+    public: 0x0221312b,
+    private: 0x022d2533,
   },
-  pubKeyHash: 0x00,
-  scriptHash: 0x05,
-  wif: 0x80,
+  pubKeyHash: 0x49,
+  scriptHash: 0x3f,
+  wif: 0xc7,
 };
 export const regtest: Network = {
-  messagePrefix: '\x18Bitcoin Signed Message:\n',
-  bech32: 'bcrt',
+  messagePrefix: '\x18Wagerr Signed Message:\n',
+  bech32: 'bcrt', // not available
   bip32: {
     public: 0x043587cf,
     private: 0x04358394,
@@ -37,13 +37,13 @@ export const regtest: Network = {
   wif: 0xef,
 };
 export const testnet: Network = {
-  messagePrefix: '\x18Bitcoin Signed Message:\n',
-  bech32: 'tb',
+  messagePrefix: '\x18Wagerr Signed Message:\n',
+  bech32: 'tb', // not available
   bip32: {
-    public: 0x043587cf,
-    private: 0x04358394,
+    public: 0x3a8061a0,
+    private: 0x3a805837,
   },
-  pubKeyHash: 0x6f,
-  scriptHash: 0xc4,
-  wif: 0xef,
+  pubKeyHash: 0x41,
+  scriptHash: 0x7d,
+  wif: 0xb1,
 };

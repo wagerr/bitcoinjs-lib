@@ -39,7 +39,7 @@ function p2sh(a, opts) {
   );
   let network = a.network;
   if (!network) {
-    network = (a.redeem && a.redeem.network) || networks_1.bitcoin;
+    network = (a.redeem && a.redeem.network) || networks_1.wagerr;
   }
   const o = { network };
   const _address = lazy.value(() => {
@@ -95,8 +95,7 @@ function p2sh(a, opts) {
   });
   lazy.prop(o, 'name', () => {
     const nameParts = ['p2sh'];
-    if (o.redeem !== undefined && o.redeem.name !== undefined)
-      nameParts.push(o.redeem.name);
+    if (o.redeem !== undefined) nameParts.push(o.redeem.name);
     return nameParts.join('-');
   });
   if (opts.validate) {

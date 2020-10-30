@@ -1,18 +1,17 @@
 {
-  "name": "bitcoinjs-lib",
-  "version": "5.2.0",
-  "description": "Client-side Bitcoin JavaScript library",
+  "name": "@wagerr/wagerrjs-lib",
+  "version": "5.1.10",
+  "description": "Client-side Wagerr JavaScript library",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
   "engines": {
     "node": ">=8.0.0"
   },
   "keywords": [
-    "bitcoinjs",
-    "bitcoin",
+    "wagerrjs",
+    "wagerr",
     "browserify",
-    "javascript",
-    "bitcoinjs"
+    "javascript"
   ],
   "scripts": {
     "build": "npm run clean && tsc -p ./tsconfig.json && npm run formatjs",
@@ -42,7 +41,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bitcoinjs/bitcoinjs-lib.git"
+    "url": "git+ssh://git@github.com/wagerr/wagerrjs-lib.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
   "files": [
     "src",
@@ -50,7 +52,7 @@
   ],
   "dependencies": {
     "bech32": "^1.1.2",
-    "bip174": "^2.0.1",
+    "bip174": "^1.0.1",
     "bip32": "^2.0.4",
     "bip66": "^1.1.0",
     "bitcoin-ops": "^1.4.0",

@@ -1,7 +1,6 @@
 import { Psbt as PsbtBase } from 'bip174';
 import * as varuint from 'bip174/src/lib/converter/varint';
 import {
-  Bip32Derivation,
   KeyValue,
   PartialSig,
   PsbtGlobalUpdate,
@@ -14,7 +13,7 @@ import {
   TransactionInput,
   TransactionOutput,
 } from 'bip174/src/lib/interfaces';
-import { checkForInput, checkForOutput } from 'bip174/src/lib/utils';
+import { checkForInput } from 'bip174/src/lib/utils';
 import { fromOutputScript, toOutputScript } from './address';
 import { cloneBuffer, reverseBuffer } from './bufferutils';
 import { hash160 } from './crypto';
@@ -23,25 +22,17 @@ import {
   Signer,
   SignerAsync,
 } from './ecpair';
-import { bitcoin as btcNetwork, Network } from './networks';
+import { wagerr as btcNetwork, Network } from './networks';
 import * as payments from './payments';
 import * as bscript from './script';
 import { Output, Transaction } from './transaction';
-
-export interface PsbtTxInput extends TransactionInput {
-  hash: Buffer;
-}
-
-export interface PsbtTxOutput extends TransactionOutput {
-  address: string | undefined;
-}
 
 /**
  * These are the default arguments for a Psbt instance.
  */
 const DEFAULT_OPTS: PsbtOpts = {
   /**
-   * A bitcoinjs Network object. This is only used if you pass an `address`
+   * A wagerrjs Network object. This is only used if you pass an `address`
    * parameter to addOutput. Otherwise it is not needed and can be left default.
    */
   network: btcNetwork,
@@ -75,7 +66,7 @@ const DEFAULT_OPTS: PsbtOpts = {
  *   and use something like a hardware wallet to sign with. (You must implement this)
  * Combiner: psbts can be combined easily with `psbt.combine(psbt2, psbt3, psbt4 ...)`
  *   the psbt calling combine will always have precedence when a conflict occurs.
- *   Combine checks if the internal bitcoin transaction is the same, so be sure that
+ *   Combine checks if the internal wagerr transaction is the same, so be sure that
  *   all sequences, version, locktime, etc. are the same before combining.
  * Input Finalizer: This role is fairly important. Not only does it need to construct
  *   the input scriptSigs and witnesses, but it SHOULD verify the signatures etc.
@@ -117,14 +108,6 @@ export class Psbt {
       __NON_WITNESS_UTXO_BUF_CACHE: [],
       __TX_IN_CACHE: {},
       __TX: (this.data.globalMap.unsignedTx as PsbtTransaction).tx,
-      // Old TransactionBuilder behavior was to not confirm input values
-      // before signing. Even though we highly encourage people to get
-      // the full parent transaction to verify values, the ability to
-      // sign non-segwit inputs without the full transaction was often
-      // requested. So the only way to activate is to use @ts-ignore.
-      // We will disable exporting the Psbt when unsafe sign is active.
-      // because it is not BIP174 compliant.
-      __UNSAFE_SIGN_NONSEGWIT: false,
     };
     if (this.data.inputs.length === 0) this.setVersion(2);
 
@@ -163,7 +146,7 @@ export class Psbt {
     this.setLocktime(locktime);
   }
 
-  get txInputs(): PsbtTxInput[] {
+  get txInputs(): TransactionInput[] {
     return this.__CACHE.__TX.ins.map(input => ({
       hash: cloneBuffer(input.hash),
       index: input.index,
@@ -171,7 +154,7 @@ export class Psbt {
     }));
   }
 
-  get txOutputs(): PsbtTxOutput[] {
+  get txOutputs(): TransactionOutput[] {
     return this.__CACHE.__TX.outs.map(output => {
       let address;
       try {
@@ -250,7 +233,6 @@ export class Psbt {
       );
     }
     checkInputsForPartialSig(this.data.inputs, 'addInput');
-    if (inputData.witnessScript) checkInvalidP2WSH(inputData.witnessScript);
     const c = this.__CACHE;
     this.data.addInput(inputData);
     const txIn = c.__TX.ins[c.__TX.ins.length - 1];
@@ -364,48 +346,6 @@ export class Psbt {
     return this;
   }
 
-  getInputType(inputIndex: number): AllScriptType {
-    const input = checkForInput(this.data.inputs, inputIndex);
-    const script = getScriptFromUtxo(inputIndex, input, this.__CACHE);
-    const result = getMeaningfulScript(
-      script,
-      inputIndex,
-      'input',
-      input.redeemScript || redeemFromFinalScriptSig(input.finalScriptSig),
-      input.witnessScript ||
-        redeemFromFinalWitnessScript(input.finalScriptWitness),
-    );
-    const type = result.type === 'raw' ? '' : result.type + '-';
-    const mainType = classifyScript(result.meaningfulScript);
-    return (type + mainType) as AllScriptType;
-  }
-
-  inputHasPubkey(inputIndex: number, pubkey: Buffer): boolean {
-    const input = checkForInput(this.data.inputs, inputIndex);
-    return pubkeyInInput(pubkey, input, inputIndex, this.__CACHE);
-  }
-
-  inputHasHDKey(inputIndex: number, root: HDSigner): boolean {
-    const input = checkForInput(this.data.inputs, inputIndex);
-    const derivationIsMine = bip32DerivationIsMine(root);
-    return (
-      !!input.bip32Derivation && input.bip32Derivation.some(derivationIsMine)
-    );
-  }
-
-  outputHasPubkey(outputIndex: number, pubkey: Buffer): boolean {
-    const output = checkForOutput(this.data.outputs, outputIndex);
-    return pubkeyInOutput(pubkey, output, outputIndex, this.__CACHE);
-  }
-
-  outputHasHDKey(outputIndex: number, root: HDSigner): boolean {
-    const output = checkForOutput(this.data.outputs, outputIndex);
-    const derivationIsMine = bip32DerivationIsMine(root);
-    return (
-      !!output.bip32Derivation && output.bip32Derivation.some(derivationIsMine)
-    );
-  }
-
   validateSignaturesOfAllInputs(): boolean {
     checkForInput(this.data.inputs, 0); // making sure we have at least one
     const results = range(this.data.inputs.length).map(idx =>
@@ -435,7 +375,6 @@ export class Psbt {
               inputIndex,
               Object.assign({}, input, { sighashType: sig.hashType }),
               this.__CACHE,
-              true,
             )
           : { hash: hashCache!, script: scriptCache! };
       sighashCache = sig.hashType;
@@ -666,17 +605,14 @@ export class Psbt {
   }
 
   toBuffer(): Buffer {
-    checkCache(this.__CACHE);
     return this.data.toBuffer();
   }
 
   toHex(): string {
-    checkCache(this.__CACHE);
     return this.data.toHex();
   }
 
   toBase64(): string {
-    checkCache(this.__CACHE);
     return this.data.toBase64();
   }
 
@@ -686,7 +622,6 @@ export class Psbt {
   }
 
   updateInput(inputIndex: number, updateData: PsbtInputUpdate): this {
-    if (updateData.witnessScript) checkInvalidP2WSH(updateData.witnessScript);
     this.data.updateInput(inputIndex, updateData);
     if (updateData.nonWitnessUtxo) {
       addNonWitnessTxCache(
@@ -732,7 +667,6 @@ interface PsbtCache {
   __FEE_RATE?: number;
   __FEE?: number;
   __EXTRACTED_TX?: Transaction;
-  __UNSAFE_SIGN_NONSEGWIT: boolean;
 }
 
 interface PsbtOptsOptional {
@@ -802,7 +736,7 @@ const transactionFromBuffer: TransactionFromBuffer = (
 
 /**
  * This class implements the Transaction interface from bip174 library.
- * It contains a bitcoinjs-lib Transaction object.
+ * It contains a wagerrjs-lib Transaction object.
  */
 class PsbtTransaction implements ITransaction {
   tx: Transaction;
@@ -877,12 +811,6 @@ function canFinalize(
   }
 }
 
-function checkCache(cache: PsbtCache): void {
-  if (cache.__UNSAFE_SIGN_NONSEGWIT !== false) {
-    throw new Error('Not BIP174 compliant, can not export');
-  }
-}
-
 function hasSigs(
   neededSigs: number,
   partialSig?: any[],
@@ -924,17 +852,6 @@ const isP2PK = isPaymentFactory(payments.p2pk);
 const isP2PKH = isPaymentFactory(payments.p2pkh);
 const isP2WPKH = isPaymentFactory(payments.p2wpkh);
 const isP2WSHScript = isPaymentFactory(payments.p2wsh);
-const isP2SHScript = isPaymentFactory(payments.p2sh);
-
-function bip32DerivationIsMine(
-  root: HDSigner,
-): (d: Bip32Derivation) => boolean {
-  return (d: Bip32Derivation): boolean => {
-    if (!d.masterFingerprint.equals(root.fingerprint)) return false;
-    if (!root.derivePath(d.path).publicKey.equals(d.pubkey)) return false;
-    return true;
-  };
-}
 
 function check32Bit(num: number): void {
   if (
@@ -1013,7 +930,17 @@ function checkScriptForPubkey(
   script: Buffer,
   action: string,
 ): void {
-  if (!pubkeyInScript(pubkey, script)) {
+  const pubkeyHash = hash160(pubkey);
+
+  const decompiled = bscript.decompile(script);
+  if (decompiled === null) throw new Error('Unknown script error');
+
+  const hasKey = decompiled.some(element => {
+    if (typeof element === 'number') return false;
+    return element.equals(pubkey) || element.equals(pubkeyHash);
+  });
+
+  if (!hasKey) {
     throw new Error(
       `Can not ${action} for this input with the key ${pubkey.toString('hex')}`,
     );
@@ -1052,12 +979,11 @@ function checkTxInputCache(
 function scriptCheckerFactory(
   payment: any,
   paymentScriptName: string,
-): (idx: number, spk: Buffer, rs: Buffer, ioType: 'input' | 'output') => void {
+): (idx: number, spk: Buffer, rs: Buffer) => void {
   return (
     inputIndex: number,
     scriptPubKey: Buffer,
     redeemScript: Buffer,
-    ioType: 'input' | 'output',
   ): void => {
     const redeemScriptOutput = payment({
       redeem: { output: redeemScript },
@@ -1065,7 +991,7 @@ function scriptCheckerFactory(
 
     if (!scriptPubKey.equals(redeemScriptOutput)) {
       throw new Error(
-        `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+        `${paymentScriptName} for input #${inputIndex} doesn't match the scriptPubKey in the prevout`,
       );
     }
   };
@@ -1198,7 +1124,6 @@ function getHashAndSighashType(
     inputIndex,
     input,
     cache,
-    false,
     sighashTypes,
   );
   checkScriptForPubkey(pubkey, script, 'sign');
@@ -1212,7 +1137,6 @@ function getHashForSig(
   inputIndex: number,
   input: PsbtInput,
   cache: PsbtCache,
-  forValidate: boolean,
   sighashTypes?: number[],
 ): {
   script: Buffer;
@@ -1229,7 +1153,7 @@ function getHashForSig(
     );
   }
   let hash: Buffer;
-  let prevout: Output;
+  let script: Buffer;
 
   if (input.nonWitnessUtxo) {
     const nonWitnessUtxoTx = nonWitnessUtxoTxFromCache(
@@ -1249,67 +1173,85 @@ function getHashForSig(
     }
 
     const prevoutIndex = unsignedTx.ins[inputIndex].index;
-    prevout = nonWitnessUtxoTx.outs[prevoutIndex] as Output;
+    const prevout = nonWitnessUtxoTx.outs[prevoutIndex] as Output;
+
+    if (input.redeemScript) {
+      // If a redeemScript is provided, the scriptPubKey must be for that redeemScript
+      checkRedeemScript(inputIndex, prevout.script, input.redeemScript);
+      script = input.redeemScript;
+    } else {
+      script = prevout.script;
+    }
+
+    if (isP2WSHScript(script)) {
+      if (!input.witnessScript)
+        throw new Error('Segwit input needs witnessScript if not P2WPKH');
+      checkWitnessScript(inputIndex, script, input.witnessScript);
+      hash = unsignedTx.hashForWitnessV0(
+        inputIndex,
+        input.witnessScript,
+        prevout.value,
+        sighashType,
+      );
+      script = input.witnessScript;
+    } else if (isP2WPKH(script)) {
+      // P2WPKH uses the P2PKH template for prevoutScript when signing
+      const signingScript = payments.p2pkh({ hash: script.slice(2) }).output!;
+      hash = unsignedTx.hashForWitnessV0(
+        inputIndex,
+        signingScript,
+        prevout.value,
+        sighashType,
+      );
+    } else {
+      hash = unsignedTx.hashForSignature(inputIndex, script, sighashType);
+    }
   } else if (input.witnessUtxo) {
-    prevout = input.witnessUtxo;
+    let _script: Buffer; // so we don't shadow the `let script` above
+    if (input.redeemScript) {
+      // If a redeemScript is provided, the scriptPubKey must be for that redeemScript
+      checkRedeemScript(
+        inputIndex,
+        input.witnessUtxo.script,
+        input.redeemScript,
+      );
+      _script = input.redeemScript;
+    } else {
+      _script = input.witnessUtxo.script;
+    }
+    if (isP2WPKH(_script)) {
+      // P2WPKH uses the P2PKH template for prevoutScript when signing
+      const signingScript = payments.p2pkh({ hash: _script.slice(2) }).output!;
+      hash = unsignedTx.hashForWitnessV0(
+        inputIndex,
+        signingScript,
+        input.witnessUtxo.value,
+        sighashType,
+      );
+      script = _script;
+    } else if (isP2WSHScript(_script)) {
+      if (!input.witnessScript)
+        throw new Error('Segwit input needs witnessScript if not P2WPKH');
+      checkWitnessScript(inputIndex, _script, input.witnessScript);
+      hash = unsignedTx.hashForWitnessV0(
+        inputIndex,
+        input.witnessScript,
+        input.witnessUtxo.value,
+        sighashType,
+      );
+      // want to make sure the script we return is the actual meaningful script
+      script = input.witnessScript;
+    } else {
+      throw new Error(
+        `Input #${inputIndex} has witnessUtxo but non-segwit script: ` +
+          `${_script.toString('hex')}`,
+      );
+    }
   } else {
     throw new Error('Need a Utxo input item for signing');
   }
-
-  const { meaningfulScript, type } = getMeaningfulScript(
-    prevout.script,
-    inputIndex,
-    'input',
-    input.redeemScript,
-    input.witnessScript,
-  );
-
-  if (['p2sh-p2wsh', 'p2wsh'].indexOf(type) >= 0) {
-    hash = unsignedTx.hashForWitnessV0(
-      inputIndex,
-      meaningfulScript,
-      prevout.value,
-      sighashType,
-    );
-  } else if (isP2WPKH(meaningfulScript)) {
-    // P2WPKH uses the P2PKH template for prevoutScript when signing
-    const signingScript = payments.p2pkh({ hash: meaningfulScript.slice(2) })
-      .output!;
-    hash = unsignedTx.hashForWitnessV0(
-      inputIndex,
-      signingScript,
-      prevout.value,
-      sighashType,
-    );
-  } else {
-    // non-segwit
-    if (
-      input.nonWitnessUtxo === undefined &&
-      cache.__UNSAFE_SIGN_NONSEGWIT === false
-    )
-      throw new Error(
-        `Input #${inputIndex} has witnessUtxo but non-segwit script: ` +
-          `${meaningfulScript.toString('hex')}`,
-      );
-    if (!forValidate && cache.__UNSAFE_SIGN_NONSEGWIT !== false)
-      console.warn(
-        'Warning: Signing non-segwit inputs without the full parent transaction ' +
-          'means there is a chance that a miner could feed you incorrect information ' +
-          'to trick you into paying large fees. This behavior is the same as the old ' +
-          'TransactionBuilder class when signing non-segwit scripts. You are not ' +
-          'able to export this Psbt with toBuffer|toBase64|toHex since it is not ' +
-          'BIP174 compliant.\n*********************\nPROCEED WITH CAUTION!\n' +
-          '*********************',
-      );
-    hash = unsignedTx.hashForSignature(
-      inputIndex,
-      meaningfulScript,
-      sighashType,
-    );
-  }
-
   return {
-    script: meaningfulScript,
+    script,
     sighashType,
     hash,
   };
@@ -1621,191 +1563,7 @@ function nonWitnessUtxoTxFromCache(
   return c[inputIndex];
 }
 
-function getScriptFromUtxo(
-  inputIndex: number,
-  input: PsbtInput,
-  cache: PsbtCache,
-): Buffer {
-  if (input.witnessUtxo !== undefined) {
-    return input.witnessUtxo.script;
-  } else if (input.nonWitnessUtxo !== undefined) {
-    const nonWitnessUtxoTx = nonWitnessUtxoTxFromCache(
-      cache,
-      input,
-      inputIndex,
-    );
-    return nonWitnessUtxoTx.outs[cache.__TX.ins[inputIndex].index].script;
-  } else {
-    throw new Error("Can't find pubkey in input without Utxo data");
-  }
-}
-
-function pubkeyInInput(
-  pubkey: Buffer,
-  input: PsbtInput,
-  inputIndex: number,
-  cache: PsbtCache,
-): boolean {
-  const script = getScriptFromUtxo(inputIndex, input, cache);
-  const { meaningfulScript } = getMeaningfulScript(
-    script,
-    inputIndex,
-    'input',
-    input.redeemScript,
-    input.witnessScript,
-  );
-  return pubkeyInScript(pubkey, meaningfulScript);
-}
-
-function pubkeyInOutput(
-  pubkey: Buffer,
-  output: PsbtOutput,
-  outputIndex: number,
-  cache: PsbtCache,
-): boolean {
-  const script = cache.__TX.outs[outputIndex].script;
-  const { meaningfulScript } = getMeaningfulScript(
-    script,
-    outputIndex,
-    'output',
-    output.redeemScript,
-    output.witnessScript,
-  );
-  return pubkeyInScript(pubkey, meaningfulScript);
-}
-
-function redeemFromFinalScriptSig(
-  finalScript: Buffer | undefined,
-): Buffer | undefined {
-  if (!finalScript) return;
-  const decomp = bscript.decompile(finalScript);
-  if (!decomp) return;
-  const lastItem = decomp[decomp.length - 1];
-  if (
-    !Buffer.isBuffer(lastItem) ||
-    isPubkeyLike(lastItem) ||
-    isSigLike(lastItem)
-  )
-    return;
-  const sDecomp = bscript.decompile(lastItem);
-  if (!sDecomp) return;
-  return lastItem;
-}
-
-function redeemFromFinalWitnessScript(
-  finalScript: Buffer | undefined,
-): Buffer | undefined {
-  if (!finalScript) return;
-  const decomp = scriptWitnessToWitnessStack(finalScript);
-  const lastItem = decomp[decomp.length - 1];
-  if (isPubkeyLike(lastItem)) return;
-  const sDecomp = bscript.decompile(lastItem);
-  if (!sDecomp) return;
-  return lastItem;
-}
-
-function isPubkeyLike(buf: Buffer): boolean {
-  return buf.length === 33 && bscript.isCanonicalPubKey(buf);
-}
-
-function isSigLike(buf: Buffer): boolean {
-  return bscript.isCanonicalScriptSignature(buf);
-}
-
-function getMeaningfulScript(
-  script: Buffer,
-  index: number,
-  ioType: 'input' | 'output',
-  redeemScript?: Buffer,
-  witnessScript?: Buffer,
-): {
-  meaningfulScript: Buffer;
-  type: 'p2sh' | 'p2wsh' | 'p2sh-p2wsh' | 'raw';
-} {
-  const isP2SH = isP2SHScript(script);
-  const isP2SHP2WSH = isP2SH && redeemScript && isP2WSHScript(redeemScript);
-  const isP2WSH = isP2WSHScript(script);
-
-  if (isP2SH && redeemScript === undefined)
-    throw new Error('scriptPubkey is P2SH but redeemScript missing');
-  if ((isP2WSH || isP2SHP2WSH) && witnessScript === undefined)
-    throw new Error(
-      'scriptPubkey or redeemScript is P2WSH but witnessScript missing',
-    );
-
-  let meaningfulScript: Buffer;
-
-  if (isP2SHP2WSH) {
-    meaningfulScript = witnessScript!;
-    checkRedeemScript(index, script, redeemScript!, ioType);
-    checkWitnessScript(index, redeemScript!, witnessScript!, ioType);
-    checkInvalidP2WSH(meaningfulScript);
-  } else if (isP2WSH) {
-    meaningfulScript = witnessScript!;
-    checkWitnessScript(index, script, witnessScript!, ioType);
-    checkInvalidP2WSH(meaningfulScript);
-  } else if (isP2SH) {
-    meaningfulScript = redeemScript!;
-    checkRedeemScript(index, script, redeemScript!, ioType);
-  } else {
-    meaningfulScript = script;
-  }
-  return {
-    meaningfulScript,
-    type: isP2SHP2WSH
-      ? 'p2sh-p2wsh'
-      : isP2SH
-      ? 'p2sh'
-      : isP2WSH
-      ? 'p2wsh'
-      : 'raw',
-  };
-}
-
-function checkInvalidP2WSH(script: Buffer): void {
-  if (isP2WPKH(script) || isP2SHScript(script)) {
-    throw new Error('P2WPKH or P2SH can not be contained within P2WSH');
-  }
-}
-
-function pubkeyInScript(pubkey: Buffer, script: Buffer): boolean {
-  const pubkeyHash = hash160(pubkey);
-
-  const decompiled = bscript.decompile(script);
-  if (decompiled === null) throw new Error('Unknown script error');
-
-  return decompiled.some(element => {
-    if (typeof element === 'number') return false;
-    return element.equals(pubkey) || element.equals(pubkeyHash);
-  });
-}
-
-type AllScriptType =
-  | 'witnesspubkeyhash'
-  | 'pubkeyhash'
-  | 'multisig'
-  | 'pubkey'
-  | 'nonstandard'
-  | 'p2sh-witnesspubkeyhash'
-  | 'p2sh-pubkeyhash'
-  | 'p2sh-multisig'
-  | 'p2sh-pubkey'
-  | 'p2sh-nonstandard'
-  | 'p2wsh-pubkeyhash'
-  | 'p2wsh-multisig'
-  | 'p2wsh-pubkey'
-  | 'p2wsh-nonstandard'
-  | 'p2sh-p2wsh-pubkeyhash'
-  | 'p2sh-p2wsh-multisig'
-  | 'p2sh-p2wsh-pubkey'
-  | 'p2sh-p2wsh-nonstandard';
-type ScriptType =
-  | 'witnesspubkeyhash'
-  | 'pubkeyhash'
-  | 'multisig'
-  | 'pubkey'
-  | 'nonstandard';
-function classifyScript(script: Buffer): ScriptType {
+function classifyScript(script: Buffer): string {
   if (isP2WPKH(script)) return 'witnesspubkeyhash';
   if (isP2PKH(script)) return 'pubkeyhash';
   if (isP2MS(script)) return 'multisig';

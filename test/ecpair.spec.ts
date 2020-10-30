@@ -146,13 +146,6 @@ describe('ECPair', () => {
         assert.strictEqual(result, f.WIF);
       });
     });
-    it('throws if no private key is found', () => {
-      assert.throws(() => {
-        const keyPair = ECPair.makeRandom();
-        delete (keyPair as any).__D;
-        keyPair.toWIF();
-      }, /Missing private key/);
-    });
   });
 
   describe('makeRandom', () => {
@@ -187,7 +180,7 @@ describe('ECPair', () => {
       const keyPair = ECPair.makeRandom();
 
       assert.strictEqual(keyPair.compressed, true);
-      assert.strictEqual(keyPair.network, NETWORKS.bitcoin);
+      assert.strictEqual(keyPair.network, NETWORKS.wagerr);
     });
 
     it('supports the options parameter', () => {

@@ -3,12 +3,6 @@ import { KeyValue, PsbtGlobalUpdate, PsbtInput, PsbtInputUpdate, PsbtOutput, Psb
 import { Signer, SignerAsync } from './ecpair';
 import { Network } from './networks';
 import { Transaction } from './transaction';
-export interface PsbtTxInput extends TransactionInput {
-    hash: Buffer;
-}
-export interface PsbtTxOutput extends TransactionOutput {
-    address: string | undefined;
-}
 /**
  * Psbt class can parse and generate a PSBT binary based off of the BIP174.
  * There are 6 roles that this class fulfills. (Explained in BIP174)
@@ -31,7 +25,7 @@ export interface PsbtTxOutput extends TransactionOutput {
  *   and use something like a hardware wallet to sign with. (You must implement this)
  * Combiner: psbts can be combined easily with `psbt.combine(psbt2, psbt3, psbt4 ...)`
  *   the psbt calling combine will always have precedence when a conflict occurs.
- *   Combine checks if the internal bitcoin transaction is the same, so be sure that
+ *   Combine checks if the internal wagerr transaction is the same, so be sure that
  *   all sequences, version, locktime, etc. are the same before combining.
  * Input Finalizer: This role is fairly important. Not only does it need to construct
  *   the input scriptSigs and witnesses, but it SHOULD verify the signatures etc.
@@ -52,8 +46,8 @@ export declare class Psbt {
     readonly inputCount: number;
     version: number;
     locktime: number;
-    readonly txInputs: PsbtTxInput[];
-    readonly txOutputs: PsbtTxOutput[];
+    readonly txInputs: TransactionInput[];
+    readonly txOutputs: TransactionOutput[];
     combine(...those: Psbt[]): this;
     clone(): Psbt;
     setMaximumFeeRate(satoshiPerByte: number): void;
@@ -69,11 +63,6 @@ export declare class Psbt {
     getFee(): number;
     finalizeAllInputs(): this;
     finalizeInput(inputIndex: number, finalScriptsFunc?: FinalScriptsFunc): this;
-    getInputType(inputIndex: number): AllScriptType;
-    inputHasPubkey(inputIndex: number, pubkey: Buffer): boolean;
-    inputHasHDKey(inputIndex: number, root: HDSigner): boolean;
-    outputHasPubkey(outputIndex: number, pubkey: Buffer): boolean;
-    outputHasHDKey(outputIndex: number, root: HDSigner): boolean;
     validateSignaturesOfAllInputs(): boolean;
     validateSignaturesOfInput(inputIndex: number, pubkey?: Buffer): boolean;
     signAllInputsHD(hdKeyPair: HDSigner, sighashTypes?: number[]): this;
@@ -154,5 +143,4 @@ isP2WSH: boolean) => {
     finalScriptSig: Buffer | undefined;
     finalScriptWitness: Buffer | undefined;
 };
-declare type AllScriptType = 'witnesspubkeyhash' | 'pubkeyhash' | 'multisig' | 'pubkey' | 'nonstandard' | 'p2sh-witnesspubkeyhash' | 'p2sh-pubkeyhash' | 'p2sh-multisig' | 'p2sh-pubkey' | 'p2sh-nonstandard' | 'p2wsh-pubkeyhash' | 'p2wsh-multisig' | 'p2wsh-pubkey' | 'p2wsh-nonstandard' | 'p2sh-p2wsh-pubkeyhash' | 'p2sh-p2wsh-multisig' | 'p2sh-p2wsh-pubkey' | 'p2sh-p2wsh-nonstandard';
 export {};

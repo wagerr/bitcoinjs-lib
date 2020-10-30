@@ -49,13 +49,13 @@ function txIsTransaction(tx) {
 class TransactionBuilder {
   // WARNING: maximumFeeRate is __NOT__ to be relied on,
   //          it's just another potential safety mechanism (safety in-depth)
-  constructor(network = networks.bitcoin, maximumFeeRate = 2500) {
+  constructor(network = networks.wagerr, maximumFeeRate = 2500) {
     this.network = network;
     this.maximumFeeRate = maximumFeeRate;
     this.__PREV_TX_SET = {};
     this.__INPUTS = [];
     this.__TX = new transaction_1.Transaction();
-    this.__TX.version = 2;
+    this.__TX.version = 1;
     this.__USE_LOW_R = false;
     console.warn(
       'Deprecation Warning: TransactionBuilder will be removed in the future. ' +
