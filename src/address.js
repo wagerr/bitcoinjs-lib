@@ -4,6 +4,7 @@ const networks = require('./networks');
 const payments = require('./payments');
 const bscript = require('./script');
 const types = require('./types');
+exports.OPS = require('bitcoin-ops');
 const bech32 = require('bech32');
 const bs58check = require('bs58check');
 const typeforce = require('typeforce');
@@ -83,6 +84,12 @@ function toOutputScript(address, network) {
           return payments.p2wpkh({ hash: decodeBech32.data }).output;
         if (decodeBech32.data.length === 32)
           return payments.p2wsh({ hash: decodeBech32.data }).output;
+      }
+    } else {
+      const bytes = Buffer.from(address, 'hex');
+      if (bytes[2] === 13 || bytes[2] === 3) {
+        // its betting script address
+        return bscript.compile([exports.OPS.OP_RETURN, bytes]);
       }
     }
   }

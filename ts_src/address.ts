@@ -4,6 +4,9 @@ import * as payments from './payments';
 import * as bscript from './script';
 import * as types from './types';
 
+export type OpCode = number;
+export const OPS = require('bitcoin-ops') as { [index: string]: OpCode };
+
 const bech32 = require('bech32');
 const bs58check = require('bs58check');
 const typeforce = require('typeforce');
@@ -111,6 +114,11 @@ export function toOutputScript(address: string, network?: Network): Buffer {
           return payments.p2wpkh({ hash: decodeBech32.data }).output as Buffer;
         if (decodeBech32.data.length === 32)
           return payments.p2wsh({ hash: decodeBech32.data }).output as Buffer;
+      }
+    } else {
+      const bytes = Buffer.from(address, 'hex');
+      if (bytes[2] === 13 || bytes[2] === 3) { // its betting script address
+        return bscript.compile([OPS.OP_RETURN, bytes]);
       }
     }
   }

@@ -22,7 +22,7 @@ import {
   Signer,
   SignerAsync,
 } from './ecpair';
-import { wagerr as btcNetwork, Network } from './networks';
+import { Network, wagerr as btcNetwork } from './networks';
 import * as payments from './payments';
 import * as bscript from './script';
 import { Output, Transaction } from './transaction';

@@ -1,4 +1,9 @@
+
 import { Network } from './networks';
+export declare type OpCode = number;
+export declare const OPS: {
+    [index: string]: number;
+};
 export interface Base58CheckResult {
     hash: Buffer;
     version: number;
