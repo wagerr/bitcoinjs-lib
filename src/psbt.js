@@ -78,7 +78,7 @@ class Psbt {
       // because it is not BIP174 compliant.
       __UNSAFE_SIGN_NONSEGWIT: false,
     };
-    if (this.data.inputs.length === 0) this.setVersion(2);
+    if (this.data.inputs.length === 0) this.setVersion(1);
     // Make data hidden when enumerating
     const dpew = (obj, attr, enumerable, writable) =>
       Object.defineProperty(obj, attr, {
