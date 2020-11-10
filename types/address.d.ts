@@ -1,4 +1,3 @@
-
 import { Network } from './networks';
 export declare type OpCode = number;
 export declare const OPS: {
