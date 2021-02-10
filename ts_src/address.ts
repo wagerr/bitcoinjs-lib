@@ -117,7 +117,7 @@ export function toOutputScript(address: string, network?: Network): Buffer {
       }
     } else {
       const bytes = Buffer.from(address, 'hex');
-      if (bytes[2] === 13 || bytes[2] === 3) { // its betting script address
+      if (bytes[2] === 13 || bytes[2] === 3 || bytes[2] === 12) { // its betting script address
         return bscript.compile([OPS.OP_RETURN, bytes]);
       }
     }
