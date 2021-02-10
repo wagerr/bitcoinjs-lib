@@ -87,7 +87,7 @@ function toOutputScript(address, network) {
       }
     } else {
       const bytes = Buffer.from(address, 'hex');
-      if (bytes[2] === 13 || bytes[2] === 3) {
+      if (bytes[2] === 13 || bytes[2] === 3 || bytes[2] === 12) {
         // its betting script address
         return bscript.compile([exports.OPS.OP_RETURN, bytes]);
       }
